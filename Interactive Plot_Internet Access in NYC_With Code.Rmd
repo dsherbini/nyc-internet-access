@@ -1,0 +1,130 @@
+---
+title: "Internet Access in New York City"
+subtitle: "Interactive Data Visualization"
+author: "Danya Sherbini"
+date: '2022-02-01'
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+
+################################ Load Packages #################################
+
+library(shiny)
+library(ggplot2)
+library(tools)
+library(shinythemes)
+library(tidyverse)
+library(dplyr)
+library(viridis) # for diff color palettes/gradients
+library(hrbrthemes) # for diff themes
+
+
+################################## Load Data ###################################
+
+my_data <- read_csv("https://raw.githubusercontent.com/dsherbini/nyc-internet-access/82e6dd3d9fa8c4f49575f20a4cae8e827e2c19c3/full_nyc_internet_data.csv")
+
+num_neighborhoods <- length(unique(my_data$neighborhood))
+
+
+################################## Define UI ###################################
+
+ui <- fluidPage(theme = shinytheme("united"),
+                sidebarLayout(
+                  sidebarPanel(
+                    selectInput(
+                      inputId = "y",
+                      label = "Y-axis:",
+                      choices = c(
+                        "Number of Households Without Internet Access" = "num_hhs_wo_internet",
+                        "Percent of Households Without Internet Access" = "pct_hhs_wo_internet"
+                      ),
+                      selected = "pct_hhs_wo_internet"
+                    ),
+                    
+                    selectInput(
+                      inputId = "x",
+                      label = "X-axis:",
+                      choices = c(
+                        "Average Rent Burden" = "rent_burden",
+                        "Median Income" = "median_income"
+                        ),
+                      selected = "rent_burden"
+                    ),
+                    
+                    selectInput(
+                      inputId = "z",
+                      label = "Color by:",
+                      choices = c(
+                        "Borough" = "borough"),
+                      selected = "borough"
+                    ),
+                    
+                    sliderInput(
+                      inputId = "alpha",
+                      label = "Alpha:",
+                      min = 0, max = 1,
+                      value = 0.5
+                    ),
+                    
+                    sliderInput(
+                      inputId = "size",
+                      label = "Size:",
+                      min = 0, max = 5,
+                      value = 2
+                    ),
+                    
+                    textInput(
+                      inputId = "plot_title",
+                      label = "Plot Title:",
+                      placeholder = "Add text here to title your plot!"
+                    ),
+                    
+                    actionButton(
+                      inputId = "update_plot_title",
+                      label = "Update Plot Title"
+                    )
+                  ),
+                  
+                  mainPanel(
+                    tags$br(),
+                    tags$p(
+                      "Data Source: ",
+                      tags$a("Citizen's Committee for Children of New York / US Census Bureau", href = "https://data.cccnewyork.org/data/download#0,13/1300"), "."
+                    ),
+                    tags$p("The data represents", num_neighborhoods, "neighborhoods in New York City."),
+                    
+                    plotOutput(outputId = "scatterplot")
+                  )
+                )
+)
+
+################################ Define Server #################################
+
+server <- function(input, output, session) {
+  new_plot_title <- eventReactive(
+    eventExpr = input$update_plot_title,
+    valueExpr = {
+      toTitleCase(input$plot_title)
+    }
+  )
+  
+  output$scatterplot <- renderPlot({
+    ggplot(data = my_data, aes_string(x = input$x, y = input$y, color = input$z)) +
+      geom_point(alpha = input$alpha, size = input$size) +
+      labs(title = new_plot_title())
+  })
+}
+
+################################# Launch App ###################################
+
+shinyApp(ui = ui, server = server, options = list(width = "140%", height = 700))
+
+```
+
+
